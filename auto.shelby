@@ -1,51 +1,62 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# --- Cấu hình ---
+
+# --- Cau hinh ---
 DATA_DIR="/root/shelby/data"
 DEST_DIR="files"
+LOG_FILE="/root/shelby/logs.txt"
 
-# --- B1: chọn account ngẫu nhiên 1 hoặc 2 ---
-i=$((RANDOM % 2 + 1))
-echo "Đang dùng tài khoản Shelby số: $i"
-shelby account use "$i"
+# --- Bat dau log ---
+{
+  echo "Bat dau upload luc: $(date '+%Y-%m-%d %H:%M:%S')"
 
-# --- B2: chọn file ngẫu nhiên ---
-mapfile -d '' -t files < <(find "$DATA_DIR" -maxdepth 1 -type f -print0)
-if [ "${#files[@]}" -eq 0 ]; then
-  echo "Không có file nào trong $DATA_DIR để upload. Thoát."
-  exit 1
-fi
+  # --- Buoc 1: chon account ngau nhien 1 hoac 2 ---
+  i=$((RANDOM % 2 + 1))
+  echo "Dang dung tai khoan Shelby so: $i"
+  shelby account use "$i"
 
-idx=$((RANDOM % ${#files[@]}))
-fullpath="${files[$idx]}"
-filename="$(basename "$fullpath")"
-echo "📄 File được chọn: $filename"
-
-# --- B3: thời hạn ngẫu nhiên 365–720 ngày ---
-EXPIRATION_DAYS=$((RANDOM % 356 + 365))
-EXPIRATION="${EXPIRATION_DAYS}d"
-
-src_path="$DATA_DIR/$filename"
-dst_path="$DEST_DIR/$filename"
-
-echo "Upload: $src_path → $dst_path (hết hạn sau $EXPIRATION_DAYS ngày)"
-
-# --- B4: chạy lệnh upload có auto-confirm ---
-output_file="$(mktemp)"
-if shelby upload "$src_path" "$dst_path" \
-  --expiration "$EXPIRATION" \
-  --assume-yes | tee "$output_file"; then
-  # --- Kiểm tra xem có lỗi crypto hoặc dấu ✖ không ---
-  if grep -q "crypto is not defined" "$output_file" || grep -q "✖" "$output_file"; then
-    echo "Upload có lỗi, KHÔNG xóa file để kiểm tra thủ công."
-  else
-    echo "Upload thành công! Xóa file gốc để tránh trùng lần sau..."
-    rm -f -- "$src_path"
-    echo "Đã xóa $src_path"
+  # --- Buoc 2: chon file ngau nhien ---
+  mapfile -d '' -t files < <(find "$DATA_DIR" -maxdepth 1 -type f -print0)
+  if [ "${#files[@]}" -eq 0 ]; then
+    echo "Khong co file nao trong $DATA_DIR de upload. Thoat."
+    exit 1
   fi
-else
-  echo "Upload thất bại (lệnh shelby trả lỗi)."
-fi
 
-# Dọn file tạm
-rm -f "$output_file"
+  idx=$((RANDOM % ${#files[@]}))
+  fullpath="${files[$idx]}"
+  filename="$(basename "$fullpath")"
+  echo "File duoc chon: $filename"
+
+  # --- Buoc 3: chon thoi han ngau nhien 365–720 ngay ---
+  EXPIRATION_DAYS=$((RANDOM % 356 + 365))
+  EXPIRATION="${EXPIRATION_DAYS}d"
+
+  src_path="$DATA_DIR/$filename"
+  dst_path="$DEST_DIR/$filename"
+
+  echo "Upload: $src_path -> $dst_path (het han sau $EXPIRATION_DAYS ngay)"
+
+  # --- Buoc 4: chay lenh upload co auto-confirm ---
+  output_file="$(mktemp)"
+  if shelby upload "$src_path" "$dst_path" \
+    --expiration "$EXPIRATION" \
+    --assume-yes | tee "$output_file"; then
+
+    # --- Kiem tra loi crypto hoac ky tu ✖ ---
+    if grep -q "crypto is not defined" "$output_file" || grep -q "✖" "$output_file"; then
+      echo "Upload co loi, khong xoa file de kiem tra thu cong."
+    else
+      echo "Upload thanh cong! Xoa file goc de tranh trung lan sau..."
+      rm -f -- "$src_path"
+      echo "Da xoa $src_path"
+    fi
+  else
+    echo "Upload that bai (lenh shelby tra loi loi)."
+  fi
+
+  # Don file tam
+  rm -f "$output_file"
+
+  echo "Hoan tat luc: $(date '+%Y-%m-%d %H:%M:%S')"
+  echo
+} | tee -a "$LOG_FILE"
