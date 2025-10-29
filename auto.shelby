@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
-# --- Kiểm tra shelby ---
-if ! command -v shelby &>/dev/null; then
-  echo "Không tìm thấy lệnh 'shelby'. Hãy cài đặt trước khi chạy script."
-  exit 1
-fi
-
 # --- Cấu hình ---
 DATA_DIR="/root/shelby/data"
 DEST_DIR="files"
