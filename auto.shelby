@@ -6,57 +6,56 @@ DATA_DIR="/root/shelby/data"
 DEST_DIR="files"
 LOG_FILE="/root/shelby/logs.txt"
 
-# --- Bat dau log ---
-{
-  echo "Bat dau upload luc: $(date '+%Y-%m-%d %H:%M:%S')"
+# --- Bat dau ---
+START_TIME="$(date '+%Y-%m-%d %H:%M:%S')"
+echo "Bat dau upload luc: $START_TIME"
 
-  # --- Buoc 1: chon account ngau nhien 1 hoac 2 ---
-  i=$((RANDOM % 2 + 1))
-  echo "Dang dung tai khoan Shelby so: $i"
-  shelby account use "$i"
+# --- Buoc 1: chon account ngau nhien ---
+i=$((RANDOM % 2 + 1))
+shelby account use "$i" >/dev/null
 
-  # --- Buoc 2: chon file ngau nhien ---
-  mapfile -d '' -t files < <(find "$DATA_DIR" -maxdepth 1 -type f -print0)
-  if [ "${#files[@]}" -eq 0 ]; then
-    echo "Khong co file nao trong $DATA_DIR de upload. Thoat."
-    exit 1
+# --- Buoc 2: chon file ngau nhien ---
+mapfile -d '' -t files < <(find "$DATA_DIR" -maxdepth 1 -type f -print0)
+if [ "${#files[@]}" -eq 0 ]; then
+  echo "Khong co file nao trong $DATA_DIR de upload. Thoat."
+  exit 1
+fi
+
+idx=$((RANDOM % ${#files[@]}))
+fullpath="${files[$idx]}"
+filename="$(basename "$fullpath")"
+
+# --- Buoc 3: thoi han ngau nhien ---
+EXPIRATION_DAYS=$((RANDOM % 356 + 365))
+EXPIRATION="${EXPIRATION_DAYS}d"
+
+src_path="$DATA_DIR/$filename"
+dst_path="$DEST_DIR/$filename"
+
+# --- Buoc 4: upload ---
+output_file="$(mktemp)"
+if shelby upload "$src_path" "$dst_path" \
+  --expiration "$EXPIRATION" \
+  --assume-yes | tee "$output_file"; then
+
+  # --- Lay 2 link can log ---
+  aptos_link=$(grep -A1 "Aptos Explorer" "$output_file" | tail -n1 | xargs || true)
+  shelby_link=$(grep -A1 "Shelby Explorer" "$output_file" | tail -n1 | xargs || true)
+
+  END_TIME="$(date '+%Y-%m-%d %H:%M:%S')"
+
+  {
+    echo "=== Upload luc $START_TIME ==="
+    echo "Aptos Explorer: $aptos_link"
+    echo "Shelby Explorer: $shelby_link"
+  } >> "$LOG_FILE"
+
+  # --- Neu thanh cong thi xoa file goc ---
+  if [ -n "$aptos_link" ] && [ -n "$shelby_link" ]; then
+    rm -f -- "$src_path"
   fi
+else
+  echo "Upload that bai."
+fi
 
-  idx=$((RANDOM % ${#files[@]}))
-  fullpath="${files[$idx]}"
-  filename="$(basename "$fullpath")"
-  echo "File duoc chon: $filename"
-
-  # --- Buoc 3: chon thoi han ngau nhien 365–720 ngay ---
-  EXPIRATION_DAYS=$((RANDOM % 356 + 365))
-  EXPIRATION="${EXPIRATION_DAYS}d"
-
-  src_path="$DATA_DIR/$filename"
-  dst_path="$DEST_DIR/$filename"
-
-  echo "Upload: $src_path -> $dst_path (het han sau $EXPIRATION_DAYS ngay)"
-
-  # --- Buoc 4: chay lenh upload co auto-confirm ---
-  output_file="$(mktemp)"
-  if shelby upload "$src_path" "$dst_path" \
-    --expiration "$EXPIRATION" \
-    --assume-yes | tee "$output_file"; then
-
-    # --- Kiem tra loi crypto hoac ky tu ✖ ---
-    if grep -q "crypto is not defined" "$output_file" || grep -q "✖" "$output_file"; then
-      echo "Upload co loi, khong xoa file de kiem tra thu cong."
-    else
-      echo "Upload thanh cong! Xoa file goc de tranh trung lan sau..."
-      rm -f -- "$src_path"
-      echo "Da xoa $src_path"
-    fi
-  else
-    echo "Upload that bai (lenh shelby tra loi loi)."
-  fi
-
-  # Don file tam
-  rm -f "$output_file"
-
-  echo "Hoan tat luc: $(date '+%Y-%m-%d %H:%M:%S')"
-  echo
-} | tee -a "$LOG_FILE"
+rm -f "$output_file"
