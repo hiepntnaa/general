@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# --- Sleep ngau nhien tu 5 den 15 phut ---
+SLEEP_MINUTES=$((RANDOM % 11 + 5))
+SLEEP_SECONDS=$((SLEEP_MINUTES * 60))
+echo "Cho ngau nhien $SLEEP_MINUTES phut truoc khi bat dau..."
+sleep "$SLEEP_SECONDS"
+
 # --- Cau hinh ---
 DATA_DIR="/root/shelby/data"
 DEST_DIR="files"
