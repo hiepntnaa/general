@@ -39,8 +39,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 
 # Lấy IP từ biến môi trường
 PUBLIC_IP = os.environ.get('PUBLIC_IP', '0.0.0.0')
-START_PORT = 40000
-NUM_NODES = 20
+START_PORT = 65001
+NUM_NODES = 100
 
 dhts = []
 
